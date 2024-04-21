@@ -1,12 +1,20 @@
 package fr.insalyon.creatis.vip.application.client.view.boutiquesParsing;
 
-import com.google.gwt.json.client.JSONArray;
-import com.google.gwt.json.client.JSONObject;
-import com.google.gwt.json.client.JSONParser;
-import fr.insalyon.creatis.vip.application.client.bean.boutiquesTools.*;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import com.google.gwt.json.client.JSONArray;
+import com.google.gwt.json.client.JSONObject;
+import com.google.gwt.json.client.JSONParser;
+
+import fr.insalyon.creatis.vip.application.client.bean.boutiquesTools.BoutiquesApplication;
+import fr.insalyon.creatis.vip.application.client.bean.boutiquesTools.BoutiquesFlagInput;
+import fr.insalyon.creatis.vip.application.client.bean.boutiquesTools.BoutiquesGroup;
+import fr.insalyon.creatis.vip.application.client.bean.boutiquesTools.BoutiquesInput;
+import fr.insalyon.creatis.vip.application.client.bean.boutiquesTools.BoutiquesNumberInput;
+import fr.insalyon.creatis.vip.application.client.bean.boutiquesTools.BoutiquesOutputFile;
+import fr.insalyon.creatis.vip.application.client.bean.boutiquesTools.BoutiquesStringInput;
 
 /**
  * Helper class for parsing JSON objects
@@ -66,6 +74,16 @@ public class BoutiquesParser extends AbstractJsonParser{
         application.setSchemaVersion(getStringValue(parsedDescriptor, "schema-version"));
         application.setChallengerEmail(getStringValue(parsedDescriptor, "vip:miccai-challenger-email", true));
         application.setChallengerTeam(getStringValue(parsedDescriptor, "vip:miccai-challenge-team-name", true));
+        // Check if "VIPdot" values are one of the input IDs
+        JSONObject customObject = getObjectValue(parsedDescriptor, "custom", true);
+        if (customObject != null && customObject.containsKey("VIPdot")) {
+            JSONArray vipdotArray = customObject.get("VIPdot").isArray();
+            Set<String> inputIds = new HashSet<>();
+            for (int i = 0; i < vipdotArray.size(); i++) {
+                inputIds.add(vipdotArray.get(i).isString().stringValue());
+            }
+            application.setCustomProperties(inputIds);
+        }        
         // Output files
         JSONArray outputJSONArray = getArrayValue(parsedDescriptor, "output-files", true);
         if (outputJSONArray != null) {
@@ -130,6 +148,7 @@ public class BoutiquesParser extends AbstractJsonParser{
         String typeString = getStringValue(inputJson, "type");
         BoutiquesInput.InputType inputType = BoutiquesInput.InputType.valueOf(typeString.toUpperCase());
         BoutiquesInput input;
+        Set<String> commandLineFlagId = new HashSet<>();
         // Flag is treated separately as it does not accept value-disables, value-requires or value-choice properties
         if (inputType == BoutiquesInput.InputType.FLAG){
             boolean defaultValue = getBooleanValue(inputJson, "default-value", true);
@@ -185,6 +204,10 @@ public class BoutiquesParser extends AbstractJsonParser{
         input.setList(getBooleanValue(inputJson, "list", true));
         String commandLineFlag = getStringValue(inputJson, "command-line-flag", true);
         input.setCommandLineFlag(commandLineFlag == null ? "" : commandLineFlag);
+        if (commandLineFlag != null) {
+            commandLineFlagId.add(id);
+        }
+        BoutiquesApplication.setCommandLineFlag(commandLineFlagId);
         return input;
     }
 
