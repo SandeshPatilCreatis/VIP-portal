@@ -31,13 +31,48 @@
  */
 package fr.insalyon.creatis.vip.application.server.business;
 
+import static fr.insalyon.creatis.vip.application.client.view.ApplicationException.ApplicationError.*;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Lookup;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.xml.sax.SAXException;
+
 import fr.insalyon.creatis.grida.client.GRIDAClient;
 import fr.insalyon.creatis.grida.client.GRIDAClientException;
 import fr.insalyon.creatis.grida.client.GRIDAPoolClient;
-import fr.insalyon.creatis.moteur.plugins.workflowsdb.bean.*;
-import fr.insalyon.creatis.moteur.plugins.workflowsdb.dao.*;
+import fr.insalyon.creatis.moteur.plugins.workflowsdb.bean.Input;
+import fr.insalyon.creatis.moteur.plugins.workflowsdb.bean.Output;
+import fr.insalyon.creatis.moteur.plugins.workflowsdb.bean.Processor;
+import fr.insalyon.creatis.moteur.plugins.workflowsdb.bean.Workflow;
+import fr.insalyon.creatis.moteur.plugins.workflowsdb.bean.WorkflowStatus;
+import fr.insalyon.creatis.moteur.plugins.workflowsdb.dao.InputDAO;
+import fr.insalyon.creatis.moteur.plugins.workflowsdb.dao.OutputDAO;
+import fr.insalyon.creatis.moteur.plugins.workflowsdb.dao.ProcessorDAO;
+import fr.insalyon.creatis.moteur.plugins.workflowsdb.dao.StatsDAO;
+import fr.insalyon.creatis.moteur.plugins.workflowsdb.dao.WorkflowDAO;
+import fr.insalyon.creatis.moteur.plugins.workflowsdb.dao.WorkflowsDBDAOException;
 import fr.insalyon.creatis.vip.application.client.ApplicationConstants;
-import fr.insalyon.creatis.vip.application.client.bean.*;
+import fr.insalyon.creatis.vip.application.client.bean.Activity;
+import fr.insalyon.creatis.vip.application.client.bean.AppVersion;
+import fr.insalyon.creatis.vip.application.client.bean.Descriptor;
+import fr.insalyon.creatis.vip.application.client.bean.Engine;
+import fr.insalyon.creatis.vip.application.client.bean.InOutData;
+import fr.insalyon.creatis.vip.application.client.bean.Simulation;
 import fr.insalyon.creatis.vip.application.client.view.monitor.SimulationStatus;
 import fr.insalyon.creatis.vip.application.client.view.monitor.progress.ProcessorStatus;
 import fr.insalyon.creatis.vip.application.server.business.simulation.ParameterSweep;
@@ -59,21 +94,6 @@ import fr.insalyon.creatis.vip.datamanager.server.DataManagerUtil;
 import fr.insalyon.creatis.vip.datamanager.server.business.DataManagerBusiness;
 import fr.insalyon.creatis.vip.datamanager.server.business.ExternalPlatformBusiness;
 import fr.insalyon.creatis.vip.datamanager.server.business.LfcPathsBusiness;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Lookup;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.xml.sax.SAXException;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-
-import static fr.insalyon.creatis.vip.application.client.view.ApplicationException.ApplicationError.*;
 
 /**
  *
@@ -272,7 +292,7 @@ public class WorkflowBusiness {
             AppVersion version = applicationDAO.getVersion(
                     applicationName, applicationVersion);
             String workflowPath =
-                    dataManagerBusiness.getRemoteFile(user, version.getLfn());
+                    dataManagerBusiness.getRemoteFile(user, version.getJsonLfn());
 
             //selectRandomEngine could also be used; TODO: make this choice configurable
             Engine engine = selectEngine(applicationClass);
@@ -431,7 +451,7 @@ public class WorkflowBusiness {
         try {
             AppVersion version = applicationDAO.getVersion(applicationName, applicationVersion);
             String workflowPath =
-                    dataManagerBusiness.getRemoteFile(user, version.getLfn());
+                    dataManagerBusiness.getRemoteFile(user, version.getJsonLfn());
             return workflowPath.endsWith(".gwendia")
                     ? getGwendiaParser().parse(workflowPath)
                     : getScuflParser().parse(workflowPath);
